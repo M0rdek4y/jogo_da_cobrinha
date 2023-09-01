@@ -1,0 +1,67 @@
+import pygame
+import sys
+
+# Inicialização do Pygame
+pygame.init()
+
+# Definições da tela
+WIDTH, HEIGHT = 640, 480
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Jogo da Cobrinha")
+
+# Cores
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+YELLOW = (255, 255, 0)
+RED = (255, 0, 0)
+
+# Função para criar botões
+def create_button(rect, color, text, text_color, action):
+    font = pygame.font.Font(None, 36)
+    button_surface = pygame.Surface((rect.width, rect.height))
+    button_surface.fill(color)
+    button_rect = button_surface.get_rect()
+    button_rect.topleft = rect.topleft
+    text_surface = font.render(text, True, text_color)
+    text_rect = text_surface.get_rect()
+    text_rect.center = button_rect.center
+    screen.blit(button_surface, button_rect)
+    screen.blit(text_surface, text_rect)
+    return button_rect, action
+
+# Função principal
+def main():
+    clock = pygame.time.Clock()
+    running = True
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    if play_button_rect.collidepoint(event.pos):
+                        print("Botão Jogar pressionado")
+                        # Implemente a lógica para iniciar o jogo aqui
+                    elif rank_button_rect.collidepoint(event.pos):
+                        print("Botão Rank pressionado")
+                        # Implemente a lógica para mostrar o ranking aqui
+                    elif quit_button_rect.collidepoint(event.pos):
+                        print("Botão Sair pressionado")
+                        running = False
+
+        screen.fill(BLACK)
+        # Desenhe os botões no menu
+        play_button_rect, _ = create_button(pygame.Rect(200, 150, 240, 80), GREEN, "JOGAR", BLACK, "play")
+        rank_button_rect, _ = create_button(pygame.Rect(200, 250, 240, 80), YELLOW, "RANK", BLACK, "rank")
+        quit_button_rect, _ = create_button(pygame.Rect(200, 350, 240, 80), RED, "SAIR", BLACK, "quit")
+
+        pygame.display.flip()
+        clock.tick(30)
+
+    pygame.quit()
+    sys.exit()
+
+if __name__ == "__main__":
+    main()
