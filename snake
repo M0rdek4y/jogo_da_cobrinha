@@ -1,11 +1,40 @@
 import pygame
 import sys
+import tkinter as tk
+import random
+import json
+
+# Configurações iniciais
+largura = 28
+altura = 21
+tamanho_celula = 20
+intervalo_atualizacao = 100  # Milissegundos
+pontuacao = 0
+game_over_flag = False  # Flag para controlar o estado de fim de jogo
+
+# Inicialização da janela
+janela = tk.Tk()
+janela.title("Jogo da Cobrinha")
+janela.geometry(f"{largura * tamanho_celula}x{altura * tamanho_celula}")
+
+# Inicialização da cobra
+cobra = [(largura // 2, altura // 2)]
+direcao = (0, -1)  # Começa indo para cima
+
+# Função para gerar comida em uma posição aleatória
+def gerar_comida():
+    while True:
+        x, y = random.randint(0, largura - 1), random.randint(0, altura - 1)
+        if (x, y) not in cobra:
+            return x, y
+
+comida = gerar_comida()
 
 # Inicialização do Pygame
 pygame.init()
 
 # Definições da tela
-WIDTH, HEIGHT = 640, 480
+WIDTH, HEIGHT = 560, 425
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Jogo da Cobrinha")
 
@@ -13,55 +42,242 @@ pygame.display.set_caption("Jogo da Cobrinha")
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
+GREEND = (0, 128, 0)
 YELLOW = (255, 255, 0)
 RED = (255, 0, 0)
+GREY = (128, 128, 128)
+PURPLE = (128, 0, 128)
 
 # Função para criar botões
-def create_button(rect, color, text, text_color, action):
-    font = pygame.font.Font(None, 36)
+def create_button(rect, color, text, text_color):
+    font = pygame.font.Font(None, 36)  # Use a fonte padrão do pygame
     button_surface = pygame.Surface((rect.width, rect.height))
     button_surface.fill(color)
-    button_rect = button_surface.get_rect()
-    button_rect.topleft = rect.topleft
     text_surface = font.render(text, True, text_color)
     text_rect = text_surface.get_rect()
-    text_rect.center = button_rect.center
-    screen.blit(button_surface, button_rect)
-    screen.blit(text_surface, text_rect)
-    return button_rect, action
+    text_rect.center = button_surface.get_rect().center
+    button_surface.blit(text_surface, text_rect)
+    return button_surface, rect
 
-# Função principal
-def main():
+# Função do jogo da cobrinha
+def snake_game():
+
+    global game_over_flag
+
+    # Função para atualizar o jogo
+    def atualizar_jogo():
+        global game_over_flag
+        global cobra, direcao, comida, pontuacao
+
+        if game_over_flag:
+            return
+
+        # Mover a cobra na direção atual
+        x, y = cobra[0]
+        novo_x = (x + direcao[0]) % largura
+        novo_y = (y + direcao[1]) % altura
+
+        # Verificar se a cobra colidiu com a parede ou com ela mesma
+        if (novo_x, novo_y) in cobra or novo_x < 0 or novo_x >= largura or novo_y < 0 or novo_y >= altura:
+            game_over()
+            return
+
+        cobra.insert(0, (novo_x, novo_y))
+
+        # Verificar se a cobra comeu a comida
+        if (novo_x, novo_y) == comida:
+            pontuacao += 1
+            comida = gerar_comida()
+        else:
+            cobra.pop()
+
+        # Redesenhar a tela
+        screen.fill(BLACK)
+        for x, y in cobra:
+            pygame.draw.rect(screen, PURPLE, pygame.Rect(x * tamanho_celula, y * tamanho_celula,
+                                                        tamanho_celula, tamanho_celula))
+        cx, cy = comida
+        pygame.draw.ellipse(screen, GREEND, pygame.Rect(cx * tamanho_celula, cy * tamanho_celula,
+                                                     tamanho_celula, tamanho_celula))
+
+        # Atualizar a pontuação
+        font = pygame.font.Font(None, 36)  # Use a fonte padrão do pygame
+        pontuacao_text = font.render(f"Pontuação: {pontuacao}", True, GREY)
+        screen.blit(pontuacao_text, (10, 10))
+
+        pygame.display.flip()
+
+        # Agendar a próxima atualização
+        pygame.time.set_timer(pygame.USEREVENT, intervalo_atualizacao)
+
+    # Função para lidar com o fim do jogo
+    def game_over():
+        global game_over_flag
+        font = pygame.font.Font(None, 32)  # Use a fonte padrão do pygame
+        game_over_text = font.render(f"Fim de Jogo! Pontuação: {pontuacao}", True, GREY)
+        game_over_rect = game_over_text.get_rect()
+        game_over_rect.center = (WIDTH // 2, HEIGHT // 4)
+        screen.blit(game_over_text, game_over_rect.topleft)
+
+        # Botão para recomeçar o jogo
+        restart_button, restart_button_rect = create_button(pygame.Rect(170, 150, 240, 80), GREEN, "Recomeçar", BLACK)
+        screen.blit(restart_button, restart_button_rect.topleft)
+
+        # Botão para voltar ao menu
+        menu_button, menu_button_rect = create_button(pygame.Rect(170, 250, 240, 80), YELLOW, "Menu", BLACK)
+        screen.blit(menu_button, menu_button_rect.topleft)
+
+        pygame.display.flip()
+
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        if restart_button_rect.collidepoint(event.pos):
+                            game_over_flag = False
+                            reset_game()
+                            return
+                        elif menu_button_rect.collidepoint(event.pos):
+                            game_over_flag = False
+                            return_to_menu()
+
+    # Função para resetar o jogo
+    def reset_game():
+        global cobra, direcao, comida, pontuacao
+        cobra = [(largura // 2, altura // 2)]
+        direcao = (0, -1)
+        comida = gerar_comida()
+        pontuacao = 0
+
+    # Função para mudar a direção da cobra
+    def mudar_direcao(event):
+        global direcao
+        if event.key == pygame.K_UP and direcao != (0, 1):
+            direcao = (0, -1)
+        elif event.key == pygame.K_DOWN and direcao != (0, -1):
+            direcao = (0, 1)
+        elif event.key == pygame.K_LEFT and direcao != (1, 0):
+            direcao = (-1, 0)
+        elif event.key == pygame.K_RIGHT and direcao != (-1, 0):
+            direcao = (1, 0)
+
+    # Iniciar o jogo
+    reset_game()
+    pygame.time.set_timer(pygame.USEREVENT, intervalo_atualizacao)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.USEREVENT:
+                atualizar_jogo()
+            elif event.type == pygame.KEYDOWN:
+                mudar_direcao(event)
+
+# Função para criar e executar o menu
+def main_menu():
+    carregar_pontuacoes()
     clock = pygame.time.Clock()
     running = True
+
+    # Criação dos botões fora do loop principal
+    play_button, play_button_rect = create_button(pygame.Rect(170, 80, 240, 80), GREEN, "JOGAR", BLACK)
+    rank_button, rank_button_rect = create_button(pygame.Rect(170, 180, 240, 80), YELLOW, "RANK", BLACK)
+    quit_button, quit_button_rect = create_button(pygame.Rect(170, 280, 240, 80), RED, "SAIR", BLACK)
 
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                pygame.quit()
+                sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     if play_button_rect.collidepoint(event.pos):
                         print("Botão Jogar pressionado")
-                        # Implemente a lógica para iniciar o jogo aqui
+                        snake_game()
                     elif rank_button_rect.collidepoint(event.pos):
                         print("Botão Rank pressionado")
-                        # Implemente a lógica para mostrar o ranking aqui
+                        exibir_rank()
                     elif quit_button_rect.collidepoint(event.pos):
                         print("Botão Sair pressionado")
-                        running = False
+                        pygame.quit()
+                        sys.exit()
 
         screen.fill(BLACK)
-        # Desenhe os botões no menu
-        play_button_rect, _ = create_button(pygame.Rect(200, 150, 240, 80), GREEN, "JOGAR", BLACK, "play")
-        rank_button_rect, _ = create_button(pygame.Rect(200, 250, 240, 80), YELLOW, "RANK", BLACK, "rank")
-        quit_button_rect, _ = create_button(pygame.Rect(200, 350, 240, 80), RED, "SAIR", BLACK, "quit")
-
+        screen.blit(play_button, play_button_rect.topleft)
+        screen.blit(rank_button, rank_button_rect.topleft)
+        screen.blit(quit_button, quit_button_rect.topleft)
         pygame.display.flip()
         clock.tick(30)
 
-    pygame.quit()
-    sys.exit()
+# Função para exibir o rank
+def exibir_rank():
+    pontuacoes = carregar_pontuacoes()
+    if not pontuacoes:
+        return  # Não faça nada se o rank estiver vazio
+
+    rank_screen = True
+    while rank_screen:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    rank_screen = False
+
+        screen.fill(BLACK)
+
+        font = pygame.font.Font(None, 36)
+        title_text = font.render("Ranking - 5 Pontuações Mais Altas", True, WHITE)
+        screen.blit(title_text, (50, 20))
+
+        y_offset = 100
+        for idx, score in enumerate(pontuacoes):
+            rank_text = font.render(f"{idx + 1}. Pontuação: {score}", True, WHITE)
+            screen.blit(rank_text, (100, y_offset))
+            y_offset += 40
+
+        # Botão para voltar ao menu
+        menu_button, menu_button_rect = create_button(pygame.Rect(170, 315, 240, 80), YELLOW, "Voltar para o Menu", BLACK)
+        screen.blit(menu_button, menu_button_rect.topleft)
+
+        pygame.display.flip()
+
+        while rank_screen:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        if menu_button_rect.collidepoint(event.pos):
+                            rank_screen = False
+
+# Função para retornar ao menu após o fim do jogo
+def return_to_menu():
+    main_menu()
+
+# Função para salvar a pontuação em um arquivo JSON
+def salvar_pontuacao(pontuacao):
+    pontuacoes = carregar_pontuacoes()
+    pontuacoes.append(pontuacao)
+    pontuacoes.sort(reverse=True)
+    pontuacoes = pontuacoes[:5]  # Manter apenas as 5 maiores pontuações
+    with open("pontuacoes.json", "w") as file:
+        json.dump(pontuacoes, file)
+
+# Função para carregar as pontuações a partir de um arquivo JSON
+def carregar_pontuacoes():
+    try:
+        with open("pontuacoes.json", "r") as file:
+            pontuacoes = json.load(file)
+        return pontuacoes
+    except FileNotFoundError:
+        return []
 
 if __name__ == "__main__":
-    main()
+    main_menu()
