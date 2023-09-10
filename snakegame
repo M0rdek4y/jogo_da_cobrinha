@@ -2,7 +2,6 @@ import pygame
 import sys
 import tkinter as tk
 import random
-import json  # Importe o módulo json para trabalhar com arquivos JSON
 
 # Configurações iniciais
 largura = 28
@@ -112,28 +111,10 @@ def snake_game():
         pygame.time.set_timer(pygame.USEREVENT, intervalo_atualizacao)
 
     # Função para lidar com o fim do jogo
-    def tentenov():
-        global salvar_button_rect  # Declare a variável como global para acessá-la fora da função
-        salvar_button_rect = pygame.Rect(150, HEIGHT // 3.2, 240, 80)  # Redefina a posição do botão "Salvar"
-
-        # Botões para recomeçar ou voltar ao menu
-        screen.fill(BLACK)
-        menu_button, menu_button_rect = create_button(pygame.Rect(150, HEIGHT // 1.9, 240, 80), YELLOW, "Menu", BLACK)
-        restart_button, restart_button_rect = create_button(pygame.Rect(150, HEIGHT // 1.34, 240, 80), GREEN, "Recomeçar", BLACK)
-        screen.blit(menu_button, menu_button_rect.topleft)
-        screen.blit(restart_button, restart_button_rect.topleft)
-
-        # Redesenha a tela
-        screen.blit(restart_button, restart_button_rect.topleft)
-        screen.blit(menu_button, menu_button_rect.topleft)
-        pygame.display.flip()
-
     def game_over():
         global game_over_flag
         global nome_jogador
         nome_digitado = ""
-        global salvar_button_rect  # Declare a variável como global para acessá-la fora da função
-        salvar_button_rect = pygame.Rect(150, HEIGHT // 1.34, 240, 80)  # Redefina a posição do botão "Salvar"
 
         font = pygame.font.Font(None, 32)  # Use a fonte padrão do pygame
         game_over_text = font.render(f"Fim de Jogo! Pontuação: {pontuacao}", True, GREY)
@@ -151,7 +132,7 @@ def snake_game():
         screen.blit(nome_text, nome_rect.topleft)
 
         # Botão para salvar a pontuação
-        salvar_button, _ = create_button(salvar_button_rect, PURPLE, "Salvar", BLACK)
+        salvar_button, salvar_button_rect = create_button(pygame.Rect(150, HEIGHT // 3.2, 240, 80), PURPLE, "Salvar", BLACK)
         screen.blit(salvar_button, salvar_button_rect.topleft)
 
         # Botões para recomeçar ou voltar ao menu
@@ -174,7 +155,7 @@ def snake_game():
                                 nome_jogador = nome_digitado
                                 salvar_pontuacao(pontuacao)
                                 game_over_flag = False
-                                tentenov()
+                                reset_game()
                                 return
                         elif restart_button_rect.collidepoint(event.pos):
                             game_over_flag = False
@@ -296,7 +277,7 @@ def exibir_rank():
         font = pygame.font.Font(None, 36)  # Use a fonte padrão do pygame
 
         if pontuacoes:
-            pontuacoes.sort(key=lambda x: x["pontuacao"], reverse=True)
+            pontuacoes.sort(reverse=True)
 
             for i, pontuacao in enumerate(pontuacoes[:5]):
                 texto_pontuacao = f"{i + 1}. {pontuacao['nome']} - {pontuacao['pontuacao']}"
@@ -327,16 +308,21 @@ def salvar_pontuacao(pontuacao):
     pontuacoes.sort(key=lambda x: x["pontuacao"], reverse=True)
     if len(pontuacoes) > 5:
         pontuacoes.pop()
-
-    # Salve as pontuações em um arquivo JSON
-    with open("rank.json", "w") as arquivo:
-        json.dump(pontuacoes, arquivo)
+    with open("rank.txt", "w") as arquivo:
+        for pontuacao in pontuacoes:
+            arquivo.write(f"{pontuacao['nome']} {pontuacao['pontuacao']}\n")
 
 # Função para carregar as pontuações do arquivo de rank
 def carregar_pontuacoes():
     try:
-        with open("rank.json", "r") as arquivo:
-            pontuacoes = json.load(arquivo)
+        with open("rank.txt", "r") as arquivo:
+            pontuacoes = []
+            for linha in arquivo:
+                partes = linha.split()
+                if len(partes) == 2:
+                    nome = partes[0]
+                    pontuacao = int(partes[1])
+                    pontuacoes.append({"nome": nome, "pontuacao": pontuacao})
             return pontuacoes
     except FileNotFoundError:
         return None

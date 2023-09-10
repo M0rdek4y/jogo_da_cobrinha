@@ -2,7 +2,7 @@ import pygame
 import sys
 import tkinter as tk
 import random
-import json  # Importe o módulo json para trabalhar com arquivos JSON
+import json
 
 # Configurações iniciais
 largura = 28
@@ -60,10 +60,25 @@ def create_button(rect, color, text, text_color):
     button_surface.blit(text_surface, text_rect)
     return button_surface, rect
 
+# Função para carregar as pontuações do arquivo JSON
+def carregar_pontuacoes():
+    try:
+        with open("pontuacoes.json", "r") as arquivo:
+            pontuacoes = json.load(arquivo)
+            return pontuacoes
+    except FileNotFoundError:
+        return []
+
+# Função para salvar as pontuações no arquivo JSON
+def salvar_pontuacoes(pontuacoes):
+    with open("pontuacoes.json", "w") as arquivo:
+        json.dump(pontuacoes, arquivo)
+
 # Função do jogo da cobrinha
 def snake_game():
 
     global game_over_flag
+    global nome_jogador
 
     # Função para atualizar o jogo
     def atualizar_jogo():
@@ -112,57 +127,29 @@ def snake_game():
         pygame.time.set_timer(pygame.USEREVENT, intervalo_atualizacao)
 
     # Função para lidar com o fim do jogo
-    def tentenov():
-        global salvar_button_rect  # Declare a variável como global para acessá-la fora da função
-        salvar_button_rect = pygame.Rect(150, HEIGHT // 3.2, 240, 80)  # Redefina a posição do botão "Salvar"
-
-        # Botões para recomeçar ou voltar ao menu
-        screen.fill(BLACK)
-        menu_button, menu_button_rect = create_button(pygame.Rect(150, HEIGHT // 1.9, 240, 80), YELLOW, "Menu", BLACK)
-        restart_button, restart_button_rect = create_button(pygame.Rect(150, HEIGHT // 1.34, 240, 80), GREEN, "Recomeçar", BLACK)
-        screen.blit(menu_button, menu_button_rect.topleft)
-        screen.blit(restart_button, restart_button_rect.topleft)
-
-        # Redesenha a tela
-        screen.blit(restart_button, restart_button_rect.topleft)
-        screen.blit(menu_button, menu_button_rect.topleft)
-        pygame.display.flip()
-
     def game_over():
         global game_over_flag
         global nome_jogador
-        nome_digitado = ""
-        global salvar_button_rect  # Declare a variável como global para acessá-la fora da função
-        salvar_button_rect = pygame.Rect(150, HEIGHT // 1.34, 240, 80)  # Redefina a posição do botão "Salvar"
-
         font = pygame.font.Font(None, 32)  # Use a fonte padrão do pygame
         game_over_text = font.render(f"Fim de Jogo! Pontuação: {pontuacao}", True, GREY)
         game_over_rect = game_over_text.get_rect()
-        game_over_rect.center = (WIDTH // 2, HEIGHT // 7)
+        game_over_rect.center = (WIDTH // 2, HEIGHT // 4)
         screen.blit(game_over_text, game_over_rect.topleft)
 
-        # Campo de entrada para o nome do jogador
-        input_rect = pygame.Rect(150, HEIGHT // 5, 240, 36)
-        pygame.draw.rect(screen, WHITE, input_rect, 2)
-        font = pygame.font.Font(None, 36)
-        nome_text = font.render(nome_digitado, True, WHITE)
-        nome_rect = nome_text.get_rect()
-        nome_rect.topleft = input_rect.x + 5, input_rect.y + 5
-        screen.blit(nome_text, nome_rect.topleft)
+        # Caixa de entrada para o nome do jogador
+        nome_entry = pygame.Rect(150, 200, 300, 40)
+        pygame.draw.rect(screen, WHITE, nome_entry, 2)
 
         # Botão para salvar a pontuação
-        salvar_button, _ = create_button(salvar_button_rect, PURPLE, "Salvar", BLACK)
+        salvar_button, salvar_button_rect = create_button(pygame.Rect(220, 250, 160, 60), GREEN, "Salvar", BLACK)
         screen.blit(salvar_button, salvar_button_rect.topleft)
-
-        # Botões para recomeçar ou voltar ao menu
-        menu_button, menu_button_rect = create_button(pygame.Rect(150, HEIGHT // 1.9, 240, 80), YELLOW, "Menu", BLACK)
-        restart_button, restart_button_rect = create_button(pygame.Rect(150, HEIGHT // 1.34, 240, 80), GREEN, "Recomeçar", BLACK)
-        screen.blit(menu_button, menu_button_rect.topleft)
-        screen.blit(restart_button, restart_button_rect.topleft)
 
         pygame.display.flip()
 
-        while True:
+        nome_digitado = ""
+        nome_digitado_flag = True
+
+        while nome_digitado_flag:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -174,41 +161,27 @@ def snake_game():
                                 nome_jogador = nome_digitado
                                 salvar_pontuacao(pontuacao)
                                 game_over_flag = False
-                                tentenov()
+                                reset_game()
                                 return
-                        elif restart_button_rect.collidepoint(event.pos):
-                            game_over_flag = False
-                            reset_game()
-                            return
-                        elif menu_button_rect.collidepoint(event.pos):
-                            game_over_flag = False
-                            return_to_menu()
+                        elif nome_entry.collidepoint(event.pos):
+                            nome_digitado_flag = True
+                        else:
+                            nome_digitado_flag = False
+                    elif event.button == 3:
+                        nome_digitado_flag = False
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_BACKSPACE:
-                        nome_digitado = nome_digitado[:-1]
-                    elif event.key == pygame.K_RETURN:
-                        if nome_digitado:
-                            nome_jogador = nome_digitado
-                            salvar_pontuacao(pontuacao)
-                            game_over_flag = False
-                            reset_game()
-                            return
-                    else:
-                        nome_digitado += event.unicode
-
-                # Limite o nome do jogador a 10 caracteres
-                nome_digitado = nome_digitado[:10]
-
-                # Redesenha a tela
-                screen.fill(BLACK)
-                screen.blit(game_over_text, game_over_rect.topleft)
-                pygame.draw.rect(screen, WHITE, input_rect, 2)
-                nome_text = font.render(nome_digitado, True, WHITE)
-                screen.blit(nome_text, nome_rect.topleft)
-                screen.blit(salvar_button, salvar_button_rect.topleft)
-                screen.blit(restart_button, restart_button_rect.topleft)
-                screen.blit(menu_button, menu_button_rect.topleft)
-                pygame.display.flip()
+                    if nome_digitado_flag:
+                        if event.key == pygame.K_BACKSPACE:
+                            nome_digitado = nome_digitado[:-1]
+                        elif event.key == pygame.K_RETURN:
+                            if nome_digitado:
+                                nome_jogador = nome_digitado
+                                salvar_pontuacao(pontuacao)
+                                game_over_flag = False
+                                reset_game()
+                                return
+                        else:
+                            nome_digitado += event.unicode
 
     # Função para resetar o jogo
     def reset_game():
@@ -265,7 +238,7 @@ def main_menu():
                         snake_game()
                     elif rank_button_rect.collidepoint(event.pos):
                         print("Botão Rank pressionado")
-                        exibir_rank()
+                        mostrar_rank()
                     elif quit_button_rect.collidepoint(event.pos):
                         print("Botão Sair pressionado")
                         pygame.quit()
@@ -278,8 +251,8 @@ def main_menu():
         pygame.display.flip()
         clock.tick(30)
 
-# Função para exibir o rank
-def exibir_rank():
+# Função para mostrar o rank
+def mostrar_rank():
     clock = pygame.time.Clock()
     running = True
 
@@ -290,56 +263,21 @@ def exibir_rank():
                 sys.exit()
 
         screen.fill(BLACK)
+        font = pygame.font.Font(None, 36)
+        titulo_text = font.render("Rank de Pontuações", True, WHITE)
+        screen.blit(titulo_text, (150, 20))
 
-        # Carregar e exibir as pontuações
         pontuacoes = carregar_pontuacoes()
-        font = pygame.font.Font(None, 36)  # Use a fonte padrão do pygame
-
         if pontuacoes:
-            pontuacoes.sort(key=lambda x: x["pontuacao"], reverse=True)
-
+            pontuacoes.sort(reverse=True, key=lambda x: x["pontuacao"])
+            y = 80
             for i, pontuacao in enumerate(pontuacoes[:5]):
-                texto_pontuacao = f"{i + 1}. {pontuacao['nome']} - {pontuacao['pontuacao']}"
-                pontuacao_text = font.render(texto_pontuacao, True, WHITE)
-                screen.blit(pontuacao_text, (150, 80 + i * 40))
-
-        menu_button, menu_button_rect = create_button(pygame.Rect(170, 320, 240, 80), YELLOW, "Menu", BLACK)
-        screen.blit(menu_button, menu_button_rect.topleft)
+                texto = f"{i + 1}. {pontuacao['nome']} - {pontuacao['pontuacao']}"
+                pontuacao_text = font.render(texto, True, WHITE)
+                screen.blit(pontuacao_text, (150, y))
+                y += 40
 
         pygame.display.flip()
-        clock.tick(30)
-
-        for event in pygame.event.get():
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1 and menu_button_rect.collidepoint(event.pos):
-                    running = False
-
-# Função para retornar ao menu após o fim do jogo ou exibir o rank
-def return_to_menu():
-    main_menu()
-
-# Função para salvar a pontuação no arquivo de rank
-def salvar_pontuacao(pontuacao):
-    pontuacoes = carregar_pontuacoes()
-    if pontuacoes is None:
-        pontuacoes = []
-    pontuacoes.append({"nome": nome_jogador, "pontuacao": pontuacao})
-    pontuacoes.sort(key=lambda x: x["pontuacao"], reverse=True)
-    if len(pontuacoes) > 5:
-        pontuacoes.pop()
-
-    # Salve as pontuações em um arquivo JSON
-    with open("rank.json", "w") as arquivo:
-        json.dump(pontuacoes, arquivo)
-
-# Função para carregar as pontuações do arquivo de rank
-def carregar_pontuacoes():
-    try:
-        with open("rank.json", "r") as arquivo:
-            pontuacoes = json.load(arquivo)
-            return pontuacoes
-    except FileNotFoundError:
-        return None
 
 if __name__ == "__main__":
     main_menu()
